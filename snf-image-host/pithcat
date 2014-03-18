@@ -92,9 +92,13 @@ def print_data(backend, url):
         size, hashmap = backend.get_object_hashmap(account, account, container,
                                                    object)
     elif type(url) is HashmapURL:
-        hashmap = [hexlify(x)
-                   for x in backend.store.map_get(unhexlify(url.hash))]
         size = int(url.size)
+        try:
+            hashmap = [hexlify(x)
+                    for x in backend.store.map_get(unhexlify(url.hash))]
+        except TypeError:
+            fullhash = "archip:%s" % url.hash
+            hashmap = backend.store.map_get_archipelago(fullhash, size)
     else:
         raise Exception("Invalid URL")
 
@@ -139,10 +143,14 @@ def main():
                              None,
                              data_path)
 
-    if options.size:
-        print_size(backend, url)
-    else:
-        print_data(backend, url)
+    try:
+        if options.size:
+            print_size(backend, url)
+        else:
+            print_data(backend, url)
+    finally:
+        xseg_ctx = backend.store.mapper.archip_map.ioctx_pool.pool_get()
+        xseg_ctx.shutdown()
 
 if __name__ == '__main__':
     main()
